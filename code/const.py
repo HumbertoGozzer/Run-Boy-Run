@@ -10,6 +10,11 @@ MENU_OPTION = ('NEW GAME',
                'CREDITS',
                'EXIT')
 
+#P
+
+PLAYER_SPEED = 5
+
+
 #W
 WIN_WIDTH = 1200
 WIN_HEIGHT = 896
