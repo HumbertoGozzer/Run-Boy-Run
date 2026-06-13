@@ -1,10 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from typing import Self
-from unittest.mock import ANY
-
 import pygame.key
-from pygame import Rect, rect
+from pygame import Rect
 
 from code.const import PLAYER_SPEED, WIN_WIDTH, WIN_HEIGHT
 from code.entity import Entity
@@ -14,7 +11,10 @@ class Player(Entity):
     def __init__(self, name: str, position):
         super().__init__(name, position)
 
-        self.animacoes = {
+        self.name= 'Player'
+
+        # Loading of the animations
+        self.animations = {
             'Idle': pygame.image.load('./asset/Soldier/Idle.png').convert_alpha(),
             'Walk': pygame.image.load('./asset/Soldier/Walk.png').convert_alpha(),
             'Run': pygame.image.load('./asset/Soldier/Run.png').convert_alpha(),
@@ -24,137 +24,105 @@ class Player(Entity):
 
 
         }
+        # Animation settings and sizes
+        self.current_action = 'Idle'
+        self.index_frame = 0.0
+        self.speed_animation = 0.15
+        self.width_frame = 128
+        self.height_frame = 128
 
-        self.acao_atual = 'Idle'
-        self.indice_frame = 0.0
-        self.velocidade_animacao = 0.15
+        self.height_render = 200
+        self.hitbox_width = 80
+        self.hitbox_height = 120
+        self.render_offset_Y = 80
 
-
-        #total_frame = 7
-        self.largura_frame = 128
-        self.altura_frame = 128
-
-        # Tamanho personagem
-        self.largura_render = 200
-        self.altura_render = 200
-
-        # Config de dano (Piscar vermelho)
-        self.esta_piscando = False
-        self.duracao_piscar = 0
-        self.frames_piscando = 10
-
-        self.virado_esquerda = False
+        # Settings (flash red)
+        self.is_flashing = False
+        self.flash_duration = 0
+        self.flash_frames = 10
+        self.turned_left = False
 
 
-        soldier_idle = self.surf
-        corte = Rect(0,0, self.largura_frame, self.altura_frame)
-        self.surf = soldier_idle.subsurface(corte)
-
-        self.rect = Rect(position[0], position[1], self.largura_render, self.altura_render)
-
-        self.animar()
+        self.rect = Rect(position[0], position[1], self.hitbox_width, self.hitbox_height)
+        self.animating()
 
 
     def move(self):
-        if self.acao_atual == 'Dead':
-            self.animar()
+        # Logic of death interrupts the movement
+        if self.current_action == 'Dead':
+            self.animating()
             return
 
-        pressed_keys = pygame.key.get_pressed()
+        pressed = pygame.key.get_pressed()
+        mouse = pygame.mouse.get_pressed()
 
-        mouse_buttons = pygame.mouse.get_pressed()
+        in_moviment = any([pressed[pygame.K_w], pressed[pygame.K_s], pressed[pygame.K_a], pressed[pygame.K_d]])
+        speed = PLAYER_SPEED * (1.5 if pressed[pygame.K_LSHIFT] else 1.0)
 
-        nova_acao = 'Idle'
+        # Actions
+        if mouse[0]: new_action = 'Shot'
+        elif mouse[2]: new_action = 'MeleAttack'
+        elif in_moviment: new_action = 'Run' if pressed[pygame.K_LSHIFT] else 'Walk'
+        else: new_action = 'Idle'
 
-        velocidade = PLAYER_SPEED
-        if pressed_keys[pygame.K_LSHIFT] or pressed_keys[pygame.K_RSHIFT]:
-            velocidade = PLAYER_SPEED * 1.5
-            if any([pressed_keys[pygame.K_w], pressed_keys[pygame.K_s], pressed_keys[pygame.K_a], pressed_keys[pygame.K_d]]):
-                nova_acao = 'Run'
-        elif any([pressed_keys[pygame.K_w], pressed_keys[pygame.K_s], pressed_keys[pygame.K_a], pressed_keys[pygame.K_d]]):
-                nova_acao = 'Walk'
+        # Movements
+        if pressed[pygame.K_w]: self.rect.y -= speed
+        if pressed[pygame.K_s]: self.rect.y += speed
+        if pressed[pygame.K_a]:
+            self.rect.x -= speed
+            self.turned_left = True
+        if pressed[pygame.K_d]:
+            self.rect.x += speed
+            self.turned_left = False
 
-        if mouse_buttons[0]:
-            nova_acao = 'Shot'
-        elif mouse_buttons[2]:
-            nova_acao = 'MeleAttack'
-
-        # Movimentação Utilizando W, A, S, D
-        if pressed_keys[pygame.K_w]:
-            self.rect.y -= velocidade
-
-        if pressed_keys[pygame.K_s]:
-            self.rect.y += velocidade
-
-        if pressed_keys[pygame.K_a]:
-            self.rect.x -= velocidade
-            self.virado_esquerda = True
-
-        if pressed_keys[pygame.K_d]:
-            self.rect.x += velocidade
-            self.virado_esquerda = False
+        # Restart animation when switching actions.
+        if new_action != self.current_action:
+            self.current_action = new_action
+            self.index_frame = 0.0
 
 
-        if nova_acao != self.acao_atual:
-            self.acao_atual = nova_acao
-            self.indice_frame = 0.0
+        # Screen limits
+        self.rect.clamp_ip(pygame.Rect(0, 580, WIN_WIDTH, WIN_HEIGHT - 700))
+        self.animating()
 
-        #Correção de Limites
-        if self.rect.left < -60:
-            self.rect.left = -60
+    def animating(self):
 
-        if self.rect.right > (WIN_WIDTH + 40):
-            self.rect.right = WIN_WIDTH + 40
+        current_sheet = self.animations[self.current_action]
+        total_frames = current_sheet.get_width() // self.width_frame
 
-        if self.rect.top < 560:
-            self.rect.top = 560
-
-        if self.rect.bottom > WIN_HEIGHT:
-            self.rect.bottom = WIN_HEIGHT
-
-        self.animar()
-
-    def animar(self):
-        folha_atual = self.animacoes[self.acao_atual]
-
-        total_frames = folha_atual.get_width() // self.largura_frame
-
-        if self.acao_atual == 'Dead' and int(self.indice_frame) == total_frames - 1:
-            self.indice_frame = total_frames - 1
+        if self.current_action == 'Dead' and int(self.index_frame) == total_frames - 1:
+            self.index_frame = total_frames - 1
 
         else:
-            self.indice_frame += self.velocidade_animacao
-            if self.indice_frame >= total_frames:
-                self.indice_frame = 0.0
+            self.index_frame += self.speed_animation
+            if self.index_frame >= total_frames:
+                self.index_frame = 0.0
 
-        posicao_x_corte = int(self.indice_frame) * self.largura_frame
+        position_x_cut = int(self.index_frame) * self.width_frame
 
-        corte = Rect(posicao_x_corte, 0, self.largura_frame, self.altura_frame)
+        cut = Rect(position_x_cut + 40, 0, 60, self.height_frame)
 
-        frame_original = folha_atual.subsurface(corte)
+        original_frame = current_sheet.subsurface(cut)
 
-        self.surf = pygame.transform.scale(frame_original, (self.largura_render, self.altura_render))
 
-        if self.virado_esquerda:
+        self.surf = pygame.transform.scale(original_frame, (self.hitbox_width, self.height_render))
+
+        if self.turned_left:
             self.surf = pygame.transform.flip(self.surf, True, False)
 
-        if self.esta_piscando:
+        if self.is_flashing:
 
-            mascara = pygame.mask.from_surface(self.surf)
+            mask = pygame.mask.from_surface(self.surf)
+            red_silhouette = mask.to_surface(setcolor=(255, 0, 0, 255), unsetcolor =(0, 0, 0, 0))
+            red_silhouette.set_alpha(180)
+            self.surf.blit(red_silhouette, (0, 0))
+            self.flash_duration -= 1
+            if self.flash_duration <= 0: self.is_flashing = False
 
-            silhueta_vermelha = mascara.to_surface(setcolor=(255, 0, 0, 255), unsetcolor =(0, 0, 0, 0))
-            silhueta_vermelha.set_alpha(180)
-
-            self.surf.blit(silhueta_vermelha, (0, 0))
-
-            self.duracao_piscar -= 1
-            if self.duracao_piscar <= 0:
-                self.esta_piscando = False
-
-    def tomar_dano(self):
-        if not self.esta_piscando and self.acao_atual != 'Dead':
-            self.esta_piscando = True
-            self.duracao_piscar = self.frames_piscando
+    def take_damage(self):
+        if not self.is_flashing and self.current_action != 'Dead':
+            self.is_flashing = True
+            self.flash_duration = self.flash_frames
 
 
 

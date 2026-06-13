@@ -24,19 +24,19 @@ class Game:
                     level.run()
                     pass
 
-                if menu_return == MENU_OPTION[1]:
+                if menu_return == MENU_OPTION[1]:  # Options
 
                     pass
 
-                if menu_return == MENU_OPTION[2]:
+                if menu_return == MENU_OPTION[2]: # Score
 
                     pass
 
-                if menu_return == MENU_OPTION[3]:
+                if menu_return == MENU_OPTION[3]: # Credits
 
                     pass
 
-                elif menu_return == MENU_OPTION[4]:
+                elif menu_return == MENU_OPTION[4]: # Exit
                     pygame.quit()
                     quit()
                 else:

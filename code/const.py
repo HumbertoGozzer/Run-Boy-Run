@@ -1,20 +1,19 @@
-#C
+# Cores
 COLOR_WHITE = (255, 255, 255)
 COLOR_ORANGE = (255, 128, 0)
 COLOR_GREEN = (126, 140, 84)
 
-#M
+# Menus
 MENU_OPTION = ('NEW GAME',
                'OPTIONS',
                'SCORE',
                'CREDITS',
                'EXIT')
 
-#P
-
+# Configs do Jogador
 PLAYER_SPEED = 5
 
 
-#W
-WIN_WIDTH = 1200
-WIN_HEIGHT = 896
+# Resolução
+WIN_WIDTH = 1920
+WIN_HEIGHT = 1080
